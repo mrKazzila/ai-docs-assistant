@@ -1,6 +1,17 @@
 from pydantic import BaseModel
 
 
+class GenerateRequest(BaseModel):
+    query: str
+
+
+class GenerateResponse(BaseModel):
+    success: bool
+    message: str
+    content: str | None = None
+    file_path: str | None = None
+
+
 class SearchRequest(BaseModel):
     query: str
 
