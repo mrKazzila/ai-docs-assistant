@@ -1,0 +1,2 @@
+FROM mistral:7b-instruct-v0.3-q4_K_M
+ADAPTER ./lora_adapter.gguf
