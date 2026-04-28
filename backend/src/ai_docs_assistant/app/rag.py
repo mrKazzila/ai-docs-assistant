@@ -1,0 +1,134 @@
+import uuid
+import hashlib
+from pathlib import Path
+
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import VectorParams
+from qdrant_client.models import VectorParams, Distance
+from ai_docs_assistant.app.logger import logger
+from ai_docs_assistant.app.settings import settings
+from langchain_ollama import OllamaEmbeddings
+from langchain_core.documents import Document
+from langchain_qdrant import QdrantVectorStore
+
+
+# Конфигурация векторного хранилища
+collection_name = settings.QDRANT_COLLECTION_NAME
+embedding_model_name = settings.EMBEDDING_MODEL_NAME
+vector_size = settings.VECTOR_SIZE
+
+
+# Инициализация клиента Qdrant и создание коллекции
+client = QdrantClient(settings.QDRANT_HOST, port=settings.QDRANT_PORT)
+
+if client.collection_exists(collection_name):
+    client.delete_collection(collection_name)
+
+client.create_collection(
+    collection_name=collection_name,
+    vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE)
+)
+
+# Инициализация embedding-модели через Ollama
+embeddings = OllamaEmbeddings(model=embedding_model_name)
+
+# Векторное хранилище LangChain
+vector_store = QdrantVectorStore(
+    client=client,
+    collection_name=collection_name,
+    embedding=embeddings,
+    distance=Distance.COSINE
+)
+
+
+def initialize_rag_from_docs() -> None:
+    """
+    Загружает все .md-файлы из директории docs/ в векторную базу при старте сервиса.
+    """
+
+    logger.info(f"Current dir: {Path().absolute()}, Parent dir: {Path().parents}")
+    docs_dir = Path().parent / 'docs'
+    logger.info(f"Docs dir: {docs_dir}")
+
+    if not docs_dir.exists():
+        logger.warning(f"Directory {docs_dir} doesn't exist")
+        return
+
+    documents = []
+    for file_path in docs_dir.glob('*.md'):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if content:
+                    documents.append(
+                        Document(
+                            page_content=content,
+                            metadata={'source': str(file_path)},
+                        )
+                    )
+        except Exception as e:
+            logger.error(f'Ошибка чтения файла {file_path}: {e}')
+
+
+        if documents:
+            vector_store.add_documents(documents)
+            logger.info(f'Загружено {len(documents)} документов в RAG-хранилище')
+        else:
+            logger.warning('В директории docs/ не найдено .md-файлов')
+
+
+def add_document_to_index(file_path: str) -> bool:
+    """
+    Инкрементально добавляет один документ в векторную БД.
+    Возвращает True при успехе.
+    """
+    try:
+        logger.info(f'Читаем файл: {file_path}')
+        content = Path(file_path).read_text(encoding="utf-8").strip()
+        if not content:
+            return False
+
+        logger.info(f'Создаём Document с метаданными: {file_path}')
+        doc = Document(
+            page_content=content,
+            metadata={"source": str(file_path)}
+        )
+
+        logger.info(f'Генерируем детерминированный ID из пути: {file_path}')
+        hash_hex = hashlib.md5(str(file_path).encode()).hexdigest()
+        doc_id = str(uuid.UUID(hash_hex[:32]))
+
+        # 4. Добавляем в Qdrant через LangChain-обёртку
+        # Используем упреждающую проверку: если документ уже есть — обновляем
+        vector_store.add_documents([doc], ids=[doc_id])
+
+        logger.info(f'Документ добавлен в индекс: {file_path}')
+        return True
+
+    except Exception as exc:
+        logger.error(f'Ошибка при добавлении документа {file_path}: {exc}')
+        return False
+
+def search_documentation(query: str, k: int = 1, similarity_threshold: float = 0.62) -> str | None:
+    """
+    Выполняет семантический поиск по документации API.
+    """
+    try:
+        logger.info(f'Семантический поиск: {query!r}')
+        results = vector_store.similarity_search_with_score(
+            query,
+            k=k,
+            score_threshold=similarity_threshold,
+        )
+
+        if results:
+            doc, score = results[0]
+            logger.info(f'Найден релевантный документ ({doc.metadata["source"]}) (score={score:.3f}) для {query!r}')
+            return doc.page_content
+
+        logger.info(f'Релевантные документы не найдены для {query!r}')
+        return None
+
+    except Exception as exc:
+        logger.error(f'Ошибка при выполнении RAG-поиска для {query!r}: {exc}', exc_info=True)
+        return None
