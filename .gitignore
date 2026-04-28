@@ -218,3 +218,4 @@ __marimo__/
 .streamlit/secrets.toml
 /backend/qdrant_storage/
 /backend/logs/
+/backend/lora-adapter/lora_adapter.gguf
