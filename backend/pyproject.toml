@@ -12,10 +12,12 @@ requires-python = ">=3.13,<3.14"
 authors = [{ name = "mrKazzila", email = "mrkazzila@gmail.com" }]
 
 dependencies = [
+    "crewai>=1.6.1",
     "fastapi>=0.136.1",
     "langchain-ollama>=1.1.0",
     "langchain-qdrant>=1.1.0",
     "langgraph>=1.1.10",
+    "litellm>=1.83.0",
     "ollama>=0.6.1",
     "pydantic>=2.13.3",
     "pydantic-settings>=2.14.0",
@@ -27,3 +29,19 @@ dependencies = [
 
 [project.scripts]
 ai-docs-assistant = "ai_docs_assistant.app.main:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
+
+
+# ==========================
+# ========= PyTest =========
+# ==========================
+[tool.pytest.ini_options]
+addopts = "-v -ra --import-mode=importlib"
+testpaths = ["tests"]
+
+strict_markers = true
+strict_config = true
