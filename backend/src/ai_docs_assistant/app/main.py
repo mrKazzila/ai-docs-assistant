@@ -4,9 +4,13 @@ from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 
 from ai_docs_assistant.app.logger import logger
-from ai_docs_assistant.app.schemas import SearchRequest, SearchResponse
-from ai_docs_assistant.app.rag import initialize_rag_from_docs, search_documentation
 
+
+from ai_docs_assistant.app.storage import save_document
+from ai_docs_assistant.app.agents import generate_and_validate_documentation
+from ai_docs_assistant.app.schemas import SearchRequest, SearchResponse, GenerateRequest, GenerateResponse
+from ai_docs_assistant.app.rag import initialize_rag_from_docs, add_document_to_index, search_documentation
+from ai_docs_assistant.app.health import check_all_services
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -28,8 +32,14 @@ app = FastAPI(
 
 
 @app.get('/health')
-def health_check():
-    return {'status': 'ok'}
+async def health_check():
+    """
+    Расширенный health-check:
+    - зависимости (Qdrant, Ollama),
+    - данные (docs/),
+    - функциональность (canary RAG-запрос).
+    """
+    return await check_all_services()
 
 
 @app.post('/search', response_model=SearchResponse)
@@ -47,3 +57,47 @@ def search_docs(request: SearchRequest):
             message='Документация не найдена. Используйте /generate для создания новой.'
         )
 
+
+@app.post('/generate', response_model=GenerateResponse)
+def generate_docs(request: GenerateRequest):
+    """
+    Генерирует новую документацию и сохраняет её в docs/.
+    """
+    # 1. Проверяем, не существует ли уже документ
+    if search_documentation(request.query, similarity_threshold=0.75):
+        return GenerateResponse(
+            success=False,
+            message='Документ уже существует. Используйте /search.'
+        )
+
+    try:
+        # 2. Генерация через агента
+        content = generate_and_validate_documentation(request.query)
+
+        # 3. Базовая валидация: должен содержать заголовок
+        if not content.strip().startswith('###'):
+            logger.error(f'Сгенерированный документ не соответствует формату для запроса: {request.query}')
+            return GenerateResponse(
+                success=False,
+                message='Ошибка генерации: неверный формат документа.'
+            )
+
+        # 4. Сохранение
+        file_path = save_document(content, request.query)
+
+        # 5. Индексируем новый файл
+        add_document_to_index(file_path)
+
+        return GenerateResponse(
+            success=True,
+            message='Документ успешно создан и сохранён.',
+            content=content,
+            file_path=file_path
+        )
+
+    except Exception as e:
+        logger.error(f'Ошибка генерации документа: {e}', exc_info=True)
+        return GenerateResponse(
+            success=False,
+            message=f'Ошибка генерации: {str(e)}'
+        )
