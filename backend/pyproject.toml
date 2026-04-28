@@ -4,14 +4,26 @@ build-backend = "setuptools.build_meta"
 
 
 [project]
-name = "ai-docs-assistant"
+name = "ai_docs_assistant"
 version = "0.1.0"
 description = "Final AI assignment from the course on LLM, with revisions."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
 authors = [{ name = "mrKazzila", email = "mrkazzila@gmail.com" }]
-dependencies = []
+
+dependencies = [
+    "fastapi>=0.136.1",
+    "langchain-ollama>=1.1.0",
+    "langchain-qdrant>=1.1.0",
+    "langgraph>=1.1.10",
+    "ollama>=0.6.1",
+    "pydantic>=2.13.3",
+    "pydantic-settings>=2.14.0",
+    "qdrant-client>=1.17.1",
+    "sentence-transformers>=5.4.1",
+    "uvicorn>=0.46.0",
+]
 
 
 [project.scripts]
-ai-docs-assistant = "ai_docs_assistant.main:main"
+ai-docs-assistant = "ai_docs_assistant.app.main:app"
