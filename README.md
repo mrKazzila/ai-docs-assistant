@@ -1,33 +1,35 @@
 # ai-docs-assistant
 
-Локальный FastAPI-сервис для генерации, хранения и семантического поиска API-документации. Проект использует Ollama для локальной LLM и эмбеддингов, Qdrant как векторное хранилище, а также agent-based workflow на CrewAI для генерации и валидации Markdown-документов.
+[Read this README in Russian](README.ru.md)
 
-Основная реализация находится в директории `backend/`.
+Local FastAPI service for generating, storing, and semantically searching API documentation. The project uses Ollama for a local LLM and embeddings, Qdrant as a vector store, and a CrewAI-based agent workflow to generate and validate Markdown documents.
 
-## Что умеет сервис
+The main implementation lives in the `backend/` directory.
 
-- Генерировать Markdown-документацию по текстовому запросу через `POST /generate`
-- Проверять результат вторым агентным шагом перед сохранением
-- Сохранять новые документы в локальную базу знаний `backend/docs/`
-- Индексировать документы в Qdrant для последующего semantic search
-- Искать релевантную документацию через `POST /search`
-- Проверять доступность зависимостей и базовую работоспособность через `GET /health`
+## What the service does
 
-## Архитектура
+- Generates Markdown documentation from a text query via `POST /generate`
+- Validates the output with a second agent step before saving
+- Stores new documents in the local knowledge base at `backend/docs/`
+- Indexes documents in Qdrant for semantic search
+- Finds relevant documentation via `POST /search`
+- Checks dependency availability and basic service health via `GET /health`
 
-Сервис состоит из нескольких локальных компонентов:
+## Architecture
 
-- `FastAPI` предоставляет HTTP API.
-- `Ollama` используется для embedding-модели и для LLM, которая запускает генерацию и валидацию.
-- `CrewAI` оркестрирует два агентных шага: `generator` и `validator`.
-- `Qdrant` хранит векторный индекс документов.
-- `backend/docs/` содержит seed-документацию и новые `.md`-файлы, созданные через API.
+The service is composed of several local components:
 
-При старте приложения вызывается инициализация RAG: сервис читает Markdown-файлы из `docs/` и загружает их в Qdrant.
+- `FastAPI` provides the HTTP API.
+- `Ollama` is used for the embedding model and for the LLM that performs generation and validation.
+- `CrewAI` orchestrates two agent steps: `generator` and `validator`.
+- `Qdrant` stores the vector index for the documents.
+- `backend/docs/` contains seed documentation and new `.md` files created through the API.
 
-Фактический entrypoint приложения: `ai_docs_assistant.app.main:app`.
+When the application starts, it initializes RAG by reading Markdown files from `docs/` and loading them into Qdrant.
 
-## Стек
+Actual application entrypoint: `ai_docs_assistant.app.main:app`.
+
+## Stack
 
 - Python 3.13
 - FastAPI
@@ -38,11 +40,12 @@
 - CrewAI
 - `uv`
 
-## Структура проекта
+## Project structure
 
 ```text
 .
 ├── README.md
+├── README.ru.md
 └── backend/
     ├── .env
     ├── docker-compose.yml
@@ -55,82 +58,82 @@
     └── uv.lock
 ```
 
-Ключевые директории:
+Key directories:
 
-- `backend/src/ai_docs_assistant/app/` — код FastAPI-приложения, RAG, агентов, health-check и конфигурации
-- `backend/docs/` — локальная база знаний в Markdown
-- `backend/lora-adapter/` — файлы и инструкция для локальной модели Ollama с LoRA-адаптером
-- `backend/logs/` — текстовые логи приложения
-- `backend/qdrant_storage/` — локальные данные Qdrant из Docker Compose
+- `backend/src/ai_docs_assistant/app/` — FastAPI app code, RAG, agents, health check, and configuration
+- `backend/docs/` — local Markdown knowledge base
+- `backend/lora-adapter/` — files and instructions for a local Ollama model with a LoRA adapter
+- `backend/logs/` — plain-text application logs
+- `backend/qdrant_storage/` — local Qdrant data from Docker Compose
 
-## Быстрый старт
+## Quick start
 
-### Требования
+### Requirements
 
 - Python `>=3.13,<3.14`
 - `uv`
-- установленный и запущенный `Ollama`
+- installed and running `Ollama`
 - `Docker Compose`
 
-### 1. Перейти в backend
+### 1. Move into the backend directory
 
 ```bash
 cd backend
 ```
 
-### 2. Установить зависимости
+### 2. Install dependencies
 
 ```bash
 uv sync
 ```
 
-### 3. Поднять Qdrant
+### 3. Start Qdrant
 
 ```bash
 docker compose up -d
 ```
 
-Команда использует [`backend/docker-compose.yml`](/Users/ikaz/work/courses/ai-docs-assistant/backend/docker-compose.yml).
+This command uses [`backend/docker-compose.yml`](/Users/ikaz/work/courses/ai-docs-assistant/backend/docker-compose.yml).
 
-### 4. Загрузить embedding-модель для поиска
+### 4. Pull the embedding model for search
 
 ```bash
 ollama pull mxbai-embed-large
 ```
 
-### 5. Подготовить LLM для генерации
+### 5. Prepare the LLM for generation
 
-По умолчанию сервис ожидает модель `ollama/my_api_docs`, указанную в `backend/.env`.
+By default, the service expects the `ollama/my_api_docs` model specified in `backend/.env`.
 
-Если такой модели нет, используйте инструкцию из [`backend/lora-adapter/README.md`](/Users/ikaz/work/courses/ai-docs-assistant/backend/lora-adapter/README.md). В текущем репозитории там описан вариант на базе `mistral:7b-instruct-v0.3-q4_K_M` и локального LoRA-адаптера.
+If that model is not available, use the instructions in [`backend/lora-adapter/README.md`](/Users/ikaz/work/courses/ai-docs-assistant/backend/lora-adapter/README.md). In the current repository state, that file describes a setup based on `mistral:7b-instruct-v0.3-q4_K_M` and a local LoRA adapter.
 
-### 6. Запустить backend
+### 6. Run the backend
 
-Запускать сервис нужно из директории `backend/`, так как `.env`, `docs/` и `logs/` читаются через относительные пути.
+The service should be started from the `backend/` directory because `.env`, `docs/`, and `logs/` are resolved via relative paths.
 
 ```bash
 uv run uvicorn ai_docs_assistant.app.main:app --reload
 ```
 
-После запуска сервис будет доступен по адресу `http://127.0.0.1:8000`.
+After startup, the service will be available at `http://127.0.0.1:8000`.
 
-## Конфигурация
+## Configuration
 
-Сервис читает настройки из [`backend/.env`](/Users/ikaz/work/courses/ai-docs-assistant/backend/.env).
+The service reads settings from [`backend/.env`](/Users/ikaz/work/courses/ai-docs-assistant/backend/.env).
 
-| Переменная | Назначение |
+| Variable | Purpose |
 | --- | --- |
-| `QDRANT_HOST` | хост Qdrant |
-| `QDRANT_PORT` | порт Qdrant |
-| `QDRANT_COLLECTION_NAME` | имя коллекции векторного индекса |
-| `EMBEDDING_MODEL_NAME` | имя embedding-модели Ollama |
-| `VECTOR_SIZE` | размер вектора для коллекции Qdrant |
-| `API_KEY` | API key, который передаётся в LLM-клиент CrewAI/Ollama |
-| `OLLAMA_HOST` | хост Ollama |
-| `OLLAMA_PORT` | порт Ollama |
-| `OLLAMA_MODEL` | имя модели для генерации документации |
+| `QDRANT_HOST` | Qdrant host |
+| `QDRANT_PORT` | Qdrant port |
+| `QDRANT_COLLECTION_NAME` | vector index collection name |
+| `EMBEDDING_MODEL_NAME` | Ollama embedding model name |
+| `VECTOR_SIZE` | vector size for the Qdrant collection |
+| `API_KEY` | API key passed into the CrewAI/Ollama LLM client |
+| `OLLAMA_HOST` | Ollama host |
+| `OLLAMA_PORT` | Ollama port |
+| `OLLAMA_MODEL` | model name used to generate documentation |
 
-Производные URL формируются внутри приложения:
+Derived URLs are built inside the application:
 
 - `qdrant_url = http://{QDRANT_HOST}:{QDRANT_PORT}`
 - `ollama_url = http://{OLLAMA_HOST}:{OLLAMA_PORT}`
@@ -139,17 +142,17 @@ uv run uvicorn ai_docs_assistant.app.main:app --reload
 
 ### `POST /generate`
 
-Генерирует новый документ, валидирует его и при успехе сохраняет в `docs/` с последующей индексацией в Qdrant.
+Generates a new document, validates it, and on success saves it to `docs/` and indexes it in Qdrant.
 
-Пример запроса:
+Request example:
 
 ```json
 {
-  "query": "опиши эндпоинт для получения задач пользователя"
+  "query": "describe the endpoint for getting user tasks"
 }
 ```
 
-Успешный ответ:
+Successful response:
 
 ```json
 {
@@ -160,7 +163,7 @@ uv run uvicorn ai_docs_assistant.app.main:app --reload
 }
 ```
 
-Ответ при ошибке:
+Error response:
 
 ```json
 {
@@ -169,26 +172,26 @@ uv run uvicorn ai_docs_assistant.app.main:app --reload
 }
 ```
 
-Поведение:
+Behavior:
 
-- перед генерацией сервис делает поиск похожего документа;
-- если документ уже найден с порогом похожести `0.75`, новый файл не создаётся;
-- сгенерированный документ должен начинаться с `###`, иначе он считается невалидным;
-- имя файла строится из запроса через внутренний slugify-механизм.
+- before generation, the service searches for a similar document;
+- if a document is already found with a similarity threshold of `0.75`, no new file is created;
+- the generated document must start with `###`, otherwise it is considered invalid;
+- the filename is derived from the query using an internal slugify mechanism.
 
 ### `POST /search`
 
-Ищет наиболее релевантный документ в Qdrant через semantic search.
+Finds the most relevant document in Qdrant using semantic search.
 
-Пример запроса:
+Request example:
 
 ```json
 {
-  "query": "эндпоинт для получения профиля"
+  "query": "endpoint for getting profile"
 }
 ```
 
-Ответ, если документ найден:
+Response when a document is found:
 
 ```json
 {
@@ -197,7 +200,7 @@ uv run uvicorn ai_docs_assistant.app.main:app --reload
 }
 ```
 
-Ответ, если ничего не найдено:
+Response when nothing is found:
 
 ```json
 {
@@ -209,9 +212,9 @@ uv run uvicorn ai_docs_assistant.app.main:app --reload
 
 ### `GET /health`
 
-Проверяет состояние сервиса и зависимостей.
+Checks service and dependency health.
 
-Пример ответа:
+Response example:
 
 ```json
 {
@@ -225,23 +228,23 @@ uv run uvicorn ai_docs_assistant.app.main:app --reload
 }
 ```
 
-Что проверяется:
+What it checks:
 
-- доступность REST API Qdrant;
-- доступность Ollama;
-- наличие Markdown-файлов в `docs/`;
-- canary-запрос к RAG с ожиданием, что в базе находится документация для `GET /api/v1/profile`.
+- Qdrant REST API availability;
+- Ollama availability;
+- presence of Markdown files in `docs/`;
+- a RAG canary query that expects documentation for `GET /api/v1/profile` to exist in the knowledge base.
 
-## Логи и данные
+## Logs and data
 
-- `backend/logs/app.log` — информационные сообщения приложения
-- `backend/logs/errors.log` — ошибки приложения
-- `backend/docs/` — исходные и сгенерированные Markdown-документы
-- `backend/qdrant_storage/` — локальное хранилище данных Qdrant
+- `backend/logs/app.log` — application informational logs
+- `backend/logs/errors.log` — application error logs
+- `backend/docs/` — source and generated Markdown documents
+- `backend/qdrant_storage/` — local Qdrant data storage
 
-## Работа с seed-документами
+## Working with seed documents
 
-В репозитории уже есть примеры документов в `backend/docs/`, например:
+The repository already contains example documents in `backend/docs/`, such as:
 
 - `get_profile.md`
 - `get_tasks.md`
@@ -250,20 +253,20 @@ uv run uvicorn ai_docs_assistant.app.main:app --reload
 - `get_users.md`
 - `delete_user.md`
 
-Они используются как начальная база знаний для semantic search и для canary-проверки в `/health`.
+They are used as the initial knowledge base for semantic search and for the canary check in `/health`.
 
-## Roadmap / Возможные улучшения
+## Roadmap / Possible improvements
 
-- Сделать `POST /generate` асинхронным через фоновые задачи и polling-статус
-- Добавить reranking поверх базового similarity search
-- Реализовать полноценный Docker-образ для backend
-- Добавить реальные тесты `pytest` для API, RAG и workflow генерации
-- Перевести логи на JSON-формат и добавить метрики/наблюдаемость
-- Добавить UI для поиска, генерации и редактирования документов
+- Make `POST /generate` asynchronous with background processing and status polling
+- Add reranking on top of the basic similarity search
+- Implement a full Docker image for the backend
+- Add real `pytest` coverage for the API, RAG, and generation workflow
+- Switch logs to JSON and add metrics/observability
+- Add a UI for searching, generating, and editing documents
 
-## Примечания по реализации
+## Implementation notes
 
-- Векторная коллекция создаётся с `Distance.COSINE`.
-- Для поиска используется `similarity_search_with_score`.
-- Новые документы после сохранения индексируются сразу через `add_document_to_index(...)`.
-- Имена файлов строятся эвристически по ключевым словам запроса, например `get_user`, `create_task`, `delete_user`.
+- The vector collection is created with `Distance.COSINE`.
+- Search uses `similarity_search_with_score`.
+- New documents are indexed immediately after saving via `add_document_to_index(...)`.
+- Filenames are built heuristically from query keywords, for example `get_user`, `create_task`, `delete_user`.
