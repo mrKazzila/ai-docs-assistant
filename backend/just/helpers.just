@@ -71,3 +71,22 @@ _logs-dir-create:
 _qdrant-storage-create:
     @mkdir -p qdrant_storage
     @echo "[qdrant] qdrant_storage/ directory is ready"
+
+[group("Internal")]
+[private]
+[doc("Verify stack prerequisites and prepare persistent directories")]
+_stack-ready: _docker-ready _env-file-check _docs-dir-check _qdrant-storage-create
+    @echo "[stack] Stack prerequisites are ready"
+
+[group("Internal")]
+[private]
+[doc("Verify API prerequisites and prepare writable directories")]
+_api-ready: _stack-ready _logs-dir-create
+    @echo "[api] API prerequisites are ready"
+
+[group("Internal")]
+[private]
+[doc("Remove lingering indexer service containers from older compose runs")]
+_indexer-service-clean: _docker-ready
+    @docker compose rm -fsv indexer >/dev/null 2>&1 || true
+    @echo "[indexer] Legacy service containers cleared"
