@@ -112,7 +112,7 @@ ollama pull mxbai-embed-large
 Запускать сервис нужно из директории `backend/`, так как `.env`, `docs/` и `logs/` читаются через относительные пути.
 
 ```bash
-uv run uvicorn ai_docs_assistant.app.main:app --reload
+uv run uvicorn ai_docs_assistant.application.main:application --reload
 ```
 
 После запуска сервис будет доступен по адресу `http://127.0.0.1:8000`.
