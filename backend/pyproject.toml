@@ -13,6 +13,7 @@ authors = [{ name = "mrKazzila", email = "mrkazzila@gmail.com" }]
 
 dependencies = [
     "crewai>=1.6.1",
+    "dishka>=1.10.1",
     "fastapi>=0.136.1",
     "langchain-ollama>=1.1.0",
     "langchain-qdrant>=1.1.0",
@@ -23,16 +24,19 @@ dependencies = [
     "pydantic-settings>=2.14.0",
     "qdrant-client>=1.17.1",
     "sentence-transformers>=5.4.1",
+    "structlog>=25.5.0",
     "uvicorn>=0.46.0",
 ]
 
 
 [project.scripts]
-ai-docs-assistant = "ai_docs_assistant.app.main:app"
+ai-docs-assistant = "ai_docs_assistant.entrypoints.application.__main__:app"
 
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
+    "ruff>=0.15.12",
+    "ty>=0.0.34",
 ]
 
 
@@ -45,3 +49,93 @@ testpaths = ["tests"]
 
 strict_markers = true
 strict_config = true
+
+
+# ==========================
+# ========= Ruff ===========
+# ==========================
+[tool.ruff]
+respect-gitignore = true
+line-length = 79
+target-version = "py313"
+src = ["src", "tests"]
+extend-exclude = []
+
+[tool.ruff.lint]
+fixable = ["ALL"]
+select = [
+    "I",
+    "A",
+    "F",
+    "E",
+    "W",
+    "N",
+    "Q",
+    "UP",
+    "PT",
+    "C4",
+    "ERA",
+    "RET",
+    "ARG",
+    "PTH",
+    "FLY",
+    "ANN",
+    "COM",
+    "G001",
+]
+ignore = [
+    "ANN002",
+    "ANN003",
+    "ANN201",
+    "ANN202",
+    "ANN401",
+    "PT007",
+]
+
+[tool.ruff.format]
+skip-magic-trailing-comma = false
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = true
+combine-as-imports = true
+lines-between-types = 0
+known-first-party = ["ai_docs_assistant", "tests"]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "double"
+multiline-quotes = "double"
+docstring-quotes = "double"
+
+
+
+# ==========================
+# ====== setuptools ========
+# ==========================
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
+
+# ==========================
+# ====== Ty ========
+# ==========================
+[tool.ty.terminal]
+output-format = "concise"
+error-on-warning = false
+
+[tool.ty.environment]
+python-version = "3.13"
+root = ["./src"]
+
+[tool.ty.src]
+include = ["src", "tests"]
+exclude = [
+    ".venv/**",
+    "env/**",
+    "docs/**",
+]
