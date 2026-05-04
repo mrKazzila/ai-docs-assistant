@@ -1,6 +1,6 @@
 from ai_docs_assistant.application.dtos.documents import (
-    GenerateDocumentCommand,
-    GenerateDocumentResult,
+    GeneratedDocumentDTO,
+    GenerateDocumentDTO,
 )
 from ai_docs_assistant.application.interfaces.document_generator import (
     DocumentGenerator,
@@ -34,15 +34,15 @@ class GenerateDocsUseCase:
 
     async def execute(
         self,
-        command: GenerateDocumentCommand,
-    ) -> GenerateDocumentResult:
+        command: GenerateDocumentDTO,
+    ) -> GeneratedDocumentDTO:
         existing = await self._document_index.search(
             query=command.query,
             score_threshold=self._document_policy.similarity_threshold,
         )
 
         if existing is not None:
-            return GenerateDocumentResult(
+            return GeneratedDocumentDTO(
                 success=True,
                 message="Похожая документация уже существует.",
                 content=existing.content,
@@ -52,13 +52,13 @@ class GenerateDocsUseCase:
         content = await self._generator.generate(command.query)
 
         if content is None:
-            return GenerateDocumentResult(
+            return GeneratedDocumentDTO(
                 success=False,
                 message="Ошибка генерации или валидации документа.",
             )
 
         if not self._document_policy.is_valid_content(content):
-            return GenerateDocumentResult(
+            return GeneratedDocumentDTO(
                 success=False,
                 message=(
                     "Сгенерированный документ не прошёл доменную валидацию."
@@ -78,7 +78,7 @@ class GenerateDocsUseCase:
             source=file_path,
         )
 
-        return GenerateDocumentResult(
+        return GeneratedDocumentDTO(
             success=True,
             message="Документ успешно создан и сохранён.",
             content=content,
