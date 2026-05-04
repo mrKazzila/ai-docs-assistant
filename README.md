@@ -151,6 +151,16 @@ Useful stack commands:
 - `just run-all`
 - `just down-all`
 - `just ps`
+- `just stack-restart`
+- `just rebuild-indexer-api`
+- `just rebuild-all`
+
+Useful quality commands:
+
+- `just lint`
+- `just format-check`
+- `just typecheck`
+- `just quality`
 
 ### Equivalent manual Docker Compose flow
 
@@ -181,6 +191,8 @@ The API and indexer run as separate containers. Both expect Ollama to be availab
 ```env
 OLLAMA_HOST=host.docker.internal
 ```
+
+This manual flow matches the current `just` recipes: images are built first, `qdrant` stays running in detached mode, `indexer` runs as a one-off container, and `api` starts separately afterward.
 
 ## Configuration
 

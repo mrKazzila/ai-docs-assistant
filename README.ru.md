@@ -151,6 +151,16 @@ just run-all
 - `just run-all`
 - `just down-all`
 - `just ps`
+- `just stack-restart`
+- `just rebuild-indexer-api`
+- `just rebuild-all`
+
+Полезные команды quality-проверок:
+
+- `just lint`
+- `just format-check`
+- `just typecheck`
+- `just quality`
 
 ### Эквивалентный ручной сценарий через Docker Compose
 
@@ -181,6 +191,8 @@ API и indexer работают как отдельные контейнеры. 
 ```env
 OLLAMA_HOST=host.docker.internal
 ```
+
+Этот ручной сценарий соответствует текущим `just`-рецептам: сначала собираются образы, затем в фоне поднимается `qdrant`, после этого одноразово выполняется `indexer`, и отдельно запускается `api`.
 
 ## Конфигурация
 
