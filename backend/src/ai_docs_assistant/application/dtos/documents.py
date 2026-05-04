@@ -2,12 +2,12 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class GenerateDocumentCommand:
+class GenerateDocumentDTO:
     query: str
 
 
 @dataclass(frozen=True)
-class GenerateDocumentResult:
+class GeneratedDocumentDTO:
     success: bool
     message: str
     content: str | None = None
@@ -15,12 +15,12 @@ class GenerateDocumentResult:
 
 
 @dataclass(frozen=True)
-class SearchDocumentQuery:
+class SearchDocumentDTO:
     query: str
 
 
 @dataclass(frozen=True)
-class SearchDocumentResult:
+class SearchedDocumentDTO:
     found: bool
     content: str | None = None
     message: str | None = None

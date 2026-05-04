@@ -55,6 +55,12 @@ class HttpHealthChecker(HealthChecker):
             query="Эндпоинт для получения профиля",
             score_threshold=0.6,
         )
-        logger.error("rag_canary_healthcheck", result=result) # TODO: remove me
+
+        logger.warning(
+            "rag_canary_unexpected_result",
+            expected="GET /api/v1/profile",
+            source=result.source,
+            score=result.score,
+        )
 
         return result is not None and "GET /api/v1/profile" in result.content

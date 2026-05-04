@@ -1,8 +1,10 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 
 from ai_docs_assistant.application.dtos.documents import (
-    GenerateDocumentCommand,
-    SearchDocumentQuery,
+    GenerateDocumentDTO,
+    SearchDocumentDTO,
 )
 from ai_docs_assistant.application.use_cases.generate_docs import (
     GenerateDocsUseCase,
@@ -15,25 +17,28 @@ from ai_docs_assistant.presentation.api.rest.dependencies import (
     get_search_docs_use_case,
 )
 from ai_docs_assistant.presentation.api.rest.schemas.docs import (
-    GenerateDocumentRequest,
-    GenerateDocumentResponse,
-    SearchDocumentRequest,
-    SearchDocumentResponse,
+    SGenerateDocumentRequest,
+    SGenerateDocumentResponse,
+    SSearchDocumentRequest,
+    SSearchDocumentResponse,
 )
 
 router = APIRouter(tags=["docs"])
 
 
-@router.post("/generate", response_model=GenerateDocumentResponse)
+@router.post("/generate")
 async def generate_document(
-    request: GenerateDocumentRequest,
-    use_case: GenerateDocsUseCase = Depends(get_generate_docs_use_case),
-) -> GenerateDocumentResponse:
+    request: SGenerateDocumentRequest,
+    use_case: Annotated[
+        GenerateDocsUseCase,
+        Depends(get_generate_docs_use_case),
+    ],
+) -> SGenerateDocumentResponse:
     result = await use_case.execute(
-        GenerateDocumentCommand(query=request.query),
+        GenerateDocumentDTO(query=request.query),
     )
 
-    return GenerateDocumentResponse(
+    return SGenerateDocumentResponse(
         success=result.success,
         message=result.message,
         content=result.content,
@@ -41,16 +46,19 @@ async def generate_document(
     )
 
 
-@router.post("/search", response_model=SearchDocumentResponse)
+@router.post("/search")
 async def search_document(
-    request: SearchDocumentRequest,
-    use_case: SearchDocsUseCase = Depends(get_search_docs_use_case),
-) -> SearchDocumentResponse:
+    request: SSearchDocumentRequest,
+    use_case: Annotated[
+        SearchDocsUseCase,
+        Depends(get_search_docs_use_case),
+    ],
+) -> SSearchDocumentResponse:
     result = await use_case.execute(
-        SearchDocumentQuery(query=request.query),
+        SearchDocumentDTO(query=request.query),
     )
 
-    return SearchDocumentResponse(
+    return SSearchDocumentResponse(
         found=result.found,
         content=result.content,
         message=result.message,

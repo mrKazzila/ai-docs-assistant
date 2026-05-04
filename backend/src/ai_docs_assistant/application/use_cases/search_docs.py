@@ -1,6 +1,6 @@
 from ai_docs_assistant.application.dtos.documents import (
-    SearchDocumentQuery,
-    SearchDocumentResult,
+    SearchDocumentDTO,
+    SearchedDocumentDTO,
 )
 from ai_docs_assistant.application.interfaces.document_index import (
     DocumentIndex,
@@ -13,12 +13,12 @@ class SearchDocsUseCase:
 
     async def execute(
         self,
-        query: SearchDocumentQuery,
-    ) -> SearchDocumentResult:
+        query: SearchDocumentDTO,
+    ) -> SearchedDocumentDTO:
         result = await self._document_index.search(query.query)
 
         if result is None:
-            return SearchDocumentResult(
+            return SearchedDocumentDTO(
                 found=False,
                 content=None,
                 message=(
@@ -27,7 +27,7 @@ class SearchDocsUseCase:
                 ),
             )
 
-        return SearchDocumentResult(
+        return SearchedDocumentDTO(
             found=True,
             content=result.content,
             message=None,
