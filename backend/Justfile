@@ -1,0 +1,7 @@
+[doc("Show available commands")]
+default:
+    @just --list
+
+import "just/main.just"
+
+
