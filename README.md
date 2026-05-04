@@ -112,7 +112,7 @@ If that model is not available, use the instructions in [`backend/lora-adapter/R
 The service should be started from the `backend/` directory because `.env`, `docs/`, and `logs/` are resolved via relative paths.
 
 ```bash
-uv run uvicorn ai_docs_assistant.app.main:app --reload
+uv run uvicorn ai_docs_assistant.application.main:application --reload
 ```
 
 After startup, the service will be available at `http://127.0.0.1:8000`.
