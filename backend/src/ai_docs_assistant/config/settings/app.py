@@ -1,9 +1,9 @@
 __all__ = ("AppSettings",)
 
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
-from pathlib import Path
 
 from ai_docs_assistant.config.settings._base_settings import BaseAppSettings
 
