@@ -1,3 +1,5 @@
+import uvicorn
+
 from ai_docs_assistant.config.settings.logger import (
     LoggingConfig,
     setup_logging,
@@ -14,3 +16,17 @@ setup_logging(
 )
 
 app = create_app()
+
+
+def main() -> None:
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_config=None,
+        access_log=True,
+    )
+
+
+if __name__ == "__main__":
+    main()
