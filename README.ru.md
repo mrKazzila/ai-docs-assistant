@@ -137,8 +137,11 @@ just run-all
 Этот сценарий запускает:
 
 - `qdrant`
-- отдельный контейнер `indexer`, который загружает `backend/docs/` в Qdrant
+- одноразовый `indexer`-job, который загружает `backend/docs/` в Qdrant
 - контейнер `api` на `http://127.0.0.1:8000`
+
+`indexer` работает по принципу миграции: стартует, завершает индексацию и автоматически удаляется, поэтому после выполнения `just ps` показывает только долгоживущие сервисы `qdrant` и `api`.
+Если раньше `indexer` запускался через `docker compose up`, один раз выполните `just down-all`, чтобы убрать старый service-контейнер и перейти на одноразовый сценарий.
 
 Полезные команды стека:
 
@@ -162,12 +165,14 @@ docker compose up -d qdrant
 2. Запустите индексатор:
 
 ```bash
-docker compose up --build indexer
+docker compose build indexer
+docker compose run --rm --no-deps indexer
 ```
 
 3. Запустите API:
 
 ```bash
+docker compose build api
 docker compose up -d api
 ```
 

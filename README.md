@@ -137,8 +137,11 @@ just run-all
 This flow starts:
 
 - `qdrant`
-- the separate `indexer` container that loads `backend/docs/` into Qdrant
+- the separate one-off `indexer` job that loads `backend/docs/` into Qdrant
 - the `api` container on `http://127.0.0.1:8000`
+
+The `indexer` runs like a migration: it starts, finishes indexing, and is removed automatically, so `just ps` shows only the long-lived `qdrant` and `api` services afterward.
+If you previously started `indexer` with `docker compose up`, run `just down-all` once to clear the old service container before relying on the one-off workflow.
 
 Useful stack commands:
 
@@ -162,12 +165,14 @@ docker compose up -d qdrant
 2. Run the indexer:
 
 ```bash
-docker compose up --build indexer
+docker compose build indexer
+docker compose run --rm --no-deps indexer
 ```
 
 3. Start the API:
 
 ```bash
+docker compose build api
 docker compose up -d api
 ```
 
