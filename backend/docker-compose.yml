@@ -13,6 +13,21 @@ services:
       retries: 20
       start_period: 5s
 
+  redis:
+    image: redis:7-alpine
+    container_name: ai_docs_redis
+    command:
+      [
+        "redis-server",
+        "--appendonly", "yes",
+        "--appendfsync", "everysec",
+        "--save", "60", "1"
+      ]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis_data:/data
+
   indexer:
     build:
       context: .
@@ -27,6 +42,28 @@ services:
     volumes:
       - ./docs:/app/docs
 
+  generation-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "ai_docs_assistant.entrypoints.workers.generation"]
+    stdin_open: false
+    tty: false
+    environment:
+      CREWAI_TRACING_ENABLED: "false"
+      CREWAI_DISABLE_TELEMETRY: "true"
+      OTEL_SDK_DISABLED: "true"
+    depends_on:
+      redis:
+        condition: service_started
+      qdrant:
+        condition: service_healthy
+    env_file:
+      - env/.env
+    volumes:
+      - ./docs:/app/docs
+      - ./logs:/app/logs
+
   api:
     build:
       context: .
@@ -36,6 +73,8 @@ services:
     depends_on:
       qdrant:
         condition: service_healthy
+      redis:
+        condition: service_started
     env_file:
       - env/.env
     volumes:
