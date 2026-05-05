@@ -22,7 +22,14 @@ type LogRenderer = Literal["console", "json"]
 
 LOG_RENDERERS: Final[tuple[LogRenderer, ...]] = ("console", "json")
 
-NOISY_LOGGERS: Final[dict[str, int]] = {}
+NOISY_LOGGERS: Final[dict[str, int]] = {
+    "LiteLLM": logging.ERROR,
+    "litellm": logging.ERROR,
+    "httpx": logging.WARNING,
+    "httpcore": logging.WARNING,
+    "opentelemetry": logging.WARNING,
+    "crewai": logging.WARNING,
+}
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
