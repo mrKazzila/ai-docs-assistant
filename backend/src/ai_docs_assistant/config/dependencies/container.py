@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from redis.asyncio import Redis
+
 from ai_docs_assistant.application.interfaces.document_generator import (
     DocumentGenerator,
 )
@@ -9,17 +11,32 @@ from ai_docs_assistant.application.interfaces.document_index import (
 from ai_docs_assistant.application.interfaces.document_storage import (
     DocumentStorage,
 )
+from ai_docs_assistant.application.interfaces.generation_job_queue import (
+    GenerationJobQueue,
+)
+from ai_docs_assistant.application.interfaces.generation_job_repository import (
+    GenerationJobRepository,
+)
 from ai_docs_assistant.application.interfaces.health_checker import (
     HealthChecker,
 )
+from ai_docs_assistant.application.use_cases.create_generation_job import (
+    CreateGenerationJobUseCase,
+)
 from ai_docs_assistant.application.use_cases.generate_docs import (
     GenerateDocsUseCase,
+)
+from ai_docs_assistant.application.use_cases.get_generation_job import (
+    GetGenerationJobUseCase,
 )
 from ai_docs_assistant.application.use_cases.healthcheck import (
     HealthcheckUseCase,
 )
 from ai_docs_assistant.application.use_cases.initialize_knowledge_base import (
     InitializeKnowledgeBaseUseCase,
+)
+from ai_docs_assistant.application.use_cases.process_generation_job import (
+    ProcessGenerationJobUseCase,
 )
 from ai_docs_assistant.application.use_cases.search_docs import (
     SearchDocsUseCase,
@@ -36,12 +53,15 @@ from ai_docs_assistant.infrastructure.health import (
     HttpHealthChecker,
     HttpProbe,
 )
-from ai_docs_assistant.infrastructure.storage import (
-    FilesystemDocumentStorage,
+from ai_docs_assistant.infrastructure.redis.client import create_redis_client
+from ai_docs_assistant.infrastructure.redis.generation_job_queue import (
+    RedisListGenerationJobQueue,
 )
-from ai_docs_assistant.infrastructure.vector_store import (
-    QdrantDocumentIndex,
+from ai_docs_assistant.infrastructure.redis.generation_job_repository import (
+    RedisGenerationJobRepository,
 )
+from ai_docs_assistant.infrastructure.storage import FilesystemDocumentStorage
+from ai_docs_assistant.infrastructure.vector_store import QdrantDocumentIndex
 
 
 def create_document_storage(settings: Settings) -> DocumentStorage:
@@ -98,6 +118,35 @@ def create_document_filename_policy() -> DocumentFilenamePolicy:
     return DocumentFilenamePolicy()
 
 
+def create_redis(settings: Settings) -> Redis:
+    return create_redis_client(
+        host=settings.redis.host,
+        port=settings.redis.port,
+        db=settings.redis.db,
+        decode_responses=True,
+    )
+
+
+def create_generation_job_repository(
+    settings: Settings,
+    redis: Redis,
+) -> GenerationJobRepository:
+    return RedisGenerationJobRepository(
+        redis=redis,
+        ttl_seconds=settings.redis.ttl_seconds,
+    )
+
+
+def create_generation_job_queue(
+    settings: Settings,
+    redis: Redis,
+) -> GenerationJobQueue:
+    return RedisListGenerationJobQueue(
+        redis=redis,
+        queue_name=settings.redis.queue_name,
+    )
+
+
 def create_generate_docs_use_case(
     generator: DocumentGenerator,
     storage: DocumentStorage,
@@ -133,4 +182,30 @@ def create_initialize_knowledge_base_use_case(
     return InitializeKnowledgeBaseUseCase(
         storage=storage,
         document_index=document_index,
+    )
+
+
+def create_create_generation_job_use_case(
+    repository: GenerationJobRepository,
+    queue: GenerationJobQueue,
+) -> CreateGenerationJobUseCase:
+    return CreateGenerationJobUseCase(
+        repository=repository,
+        queue=queue,
+    )
+
+
+def create_get_generation_job_use_case(
+    repository: GenerationJobRepository,
+) -> GetGenerationJobUseCase:
+    return GetGenerationJobUseCase(repository=repository)
+
+
+def create_process_generation_job_use_case(
+    repository: GenerationJobRepository,
+    generate_docs_use_case: GenerateDocsUseCase,
+) -> ProcessGenerationJobUseCase:
+    return ProcessGenerationJobUseCase(
+        repository=repository,
+        generate_docs_use_case=generate_docs_use_case,
     )

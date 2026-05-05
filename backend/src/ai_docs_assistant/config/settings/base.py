@@ -8,6 +8,7 @@ from ai_docs_assistant.config.settings._base_settings import BaseAppSettings
 from ai_docs_assistant.config.settings.app import AppSettings
 from ai_docs_assistant.config.settings.ollama import OllamaSettings
 from ai_docs_assistant.config.settings.qdrant import QdrantSettings
+from ai_docs_assistant.config.settings.redis import RedisSettings
 
 
 @final
@@ -15,6 +16,7 @@ class Settings(BaseAppSettings):
     app: AppSettings = Field(default_factory=AppSettings)
     qdrant: QdrantSettings = Field(default_factory=QdrantSettings)
     ollama: OllamaSettings = Field(default_factory=OllamaSettings)
+    redis: RedisSettings = Field(default_factory=RedisSettings)
 
     @property
     def log_level(self) -> str:

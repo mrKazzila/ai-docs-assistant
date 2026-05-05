@@ -74,7 +74,11 @@ class CrewAIDocumentGenerator(DocumentGenerator):
             agent=generator,
         )
 
-        crew = Crew(agents=[generator], tasks=[task])
+        crew = Crew(
+            agents=[generator],
+            tasks=[task],
+            tracing=False,
+        )
         return str(crew.kickoff()).strip()
 
     def _validate_document(self, content: str) -> bool:
@@ -86,7 +90,11 @@ class CrewAIDocumentGenerator(DocumentGenerator):
             agent=validator,
         )
 
-        crew = Crew(agents=[validator], tasks=[task])
+        crew = Crew(
+            agents=[validator],
+            tasks=[task],
+            tracing=False,
+        )
         result = str(crew.kickoff()).strip().lower()
 
         return result == "valid"

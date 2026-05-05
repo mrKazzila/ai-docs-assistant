@@ -1,35 +1,32 @@
+from dataclasses import dataclass
 from uuid import UUID
-
-from pydantic import BaseModel
 
 from ai_docs_assistant.domain.enums.generation_job_status import (
     GenerationJobStatus,
 )
 
 
-class SGenerateDocumentRequest(BaseModel):
+@dataclass(frozen=True)
+class CreateGenerationJobDTO:
     query: str
 
 
-class SCreateGenerationJobResponse(BaseModel):
+@dataclass(frozen=True)
+class CreateGenerationJobResultDTO:
     job_id: UUID
     status: GenerationJobStatus
 
 
-class SGenerationJobResponse(BaseModel):
+@dataclass(frozen=True)
+class GetGenerationJobDTO:
+    job_id: UUID
+
+
+@dataclass(frozen=True)
+class GetGenerationJobResultDTO:
     job_id: UUID
     query: str
     status: GenerationJobStatus
     content: str | None = None
     file_path: str | None = None
     error_message: str | None = None
-
-
-class SSearchDocumentRequest(BaseModel):
-    query: str
-
-
-class SSearchDocumentResponse(BaseModel):
-    found: bool
-    content: str | None = None
-    message: str | None = None
