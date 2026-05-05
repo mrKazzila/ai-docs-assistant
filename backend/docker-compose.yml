@@ -32,8 +32,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: indexer-runtime
     container_name: ai_docs_indexer
-    command: ["python", "-m", "ai_docs_assistant.entrypoints.workers.indexer"]
     depends_on:
       qdrant:
         condition: service_healthy
@@ -46,7 +46,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["python", "-m", "ai_docs_assistant.entrypoints.workers.generation"]
+      target: generation-runtime
     stdin_open: false
     tty: false
     environment:
@@ -68,8 +68,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: api-runtime
     container_name: ai_docs_api
-    command: ["python", "-m", "ai_docs_assistant.entrypoints.application"]
     depends_on:
       qdrant:
         condition: service_healthy
