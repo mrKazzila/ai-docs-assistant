@@ -4,7 +4,7 @@ compose := "docker compose"
 [private]
 [doc("Build application images")]
 _build: _stack-ready
-    {{compose}} build api indexer
+    {{compose}} build api indexer generation-worker
 
 [group("Internal")]
 [private]
@@ -18,10 +18,22 @@ _build-indexer: _stack-ready
 _build-api: _api-ready
     {{compose}} build api
 
+[group("Internal")]
+[private]
+[doc("Build the generation-worker image")]
+_build-generation-worker: _api-ready
+    {{compose}} build generation-worker
+
 [group("Stacks")]
 [doc("Run qdrant")]
 run-qdrant: _stack-ready
     {{compose}} up -d qdrant
+
+
+[group("Stacks")]
+[doc("Run redis")]
+run-redis: _stack-ready
+    {{compose}} up -d redis
 
 [group("Stacks")]
 [doc("Run indexer")]
@@ -38,7 +50,9 @@ run-api: _build-api
 [doc("Run all stack")]
 run-all: _build _indexer-service-clean
     {{compose}} up -d qdrant
+    {{compose}} up -d redis
     {{compose}} run --rm --no-deps indexer
+    {{compose}} up -d generation-worker
     {{compose}} up -d api
 
 [group("Stacks")]
