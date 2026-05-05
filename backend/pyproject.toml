@@ -12,21 +12,30 @@ requires-python = ">=3.13,<3.14"
 authors = [{ name = "mrKazzila", email = "mrkazzila@gmail.com" }]
 
 dependencies = [
-    "crewai>=1.6.1",
     "dishka>=1.10.1",
     "fastapi>=0.136.1",
-    "langchain-ollama>=1.1.0",
-    "langchain-qdrant>=1.1.0",
-    "langgraph>=1.1.10",
-    "litellm>=1.83.0",
-    "ollama>=0.6.1",
     "pydantic>=2.13.3",
     "pydantic-settings>=2.14.0",
     "qdrant-client>=1.17.1",
     "redis[hiredis]>=7.4.0",
-    "sentence-transformers>=5.4.1",
     "structlog>=25.5.0",
     "uvicorn>=0.46.0",
+]
+
+[project.optional-dependencies]
+api = [
+    "langchain-ollama>=1.1.0",
+    "langchain-qdrant>=1.1.0",
+]
+indexer = [
+    "langchain-ollama>=1.1.0",
+    "langchain-qdrant>=1.1.0",
+]
+generation = [
+    "crewai>=1.6.1",
+    "litellm>=1.83.0",
+    "langchain-ollama>=1.1.0",
+    "langchain-qdrant>=1.1.0",
 ]
 
 
