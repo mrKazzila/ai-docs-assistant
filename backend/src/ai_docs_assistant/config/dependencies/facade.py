@@ -21,24 +21,32 @@ from ai_docs_assistant.application.use_cases.process_generation_job import (
 from ai_docs_assistant.application.use_cases.search_docs import (
     SearchDocsUseCase,
 )
-from ai_docs_assistant.config.dependencies.container import (
+from ai_docs_assistant.config.dependencies.api import (
     create_create_generation_job_use_case,
-    create_document_filename_policy,
-    create_document_generator,
     create_document_index,
-    create_document_policy,
-    create_document_storage,
-    create_generate_docs_use_case,
-    create_generation_job_queue,
-    create_generation_job_repository,
     create_get_generation_job_use_case,
     create_health_checker,
     create_healthcheck_use_case,
-    create_http_probe,
-    create_initialize_knowledge_base_use_case,
-    create_process_generation_job_use_case,
-    create_redis,
     create_search_docs_use_case,
+)
+from ai_docs_assistant.config.dependencies.common import (
+    create_document_filename_policy,
+    create_document_policy,
+    create_document_storage,
+    create_generation_job_queue,
+    create_generation_job_repository,
+    create_http_probe,
+    create_redis,
+)
+from ai_docs_assistant.config.dependencies.generation import (
+    create_document_generator,
+    create_document_index as create_generation_document_index,
+    create_generate_docs_use_case,
+    create_process_generation_job_use_case,
+)
+from ai_docs_assistant.config.dependencies.indexer import (
+    create_document_index as create_indexer_document_index,
+    create_initialize_knowledge_base_use_case,
 )
 from ai_docs_assistant.config.settings.base import Settings
 
@@ -103,7 +111,7 @@ def create_api_dependencies(settings: Settings) -> ApiDependencies:
 
 def create_indexer_dependencies(settings: Settings) -> IndexerDependencies:
     storage = create_document_storage(settings)
-    document_index = create_document_index(settings)
+    document_index = create_indexer_document_index(settings)
 
     return IndexerDependencies(
         use_case=create_initialize_knowledge_base_use_case(
@@ -128,7 +136,7 @@ def create_generation_worker_dependencies(
     )
 
     storage = create_document_storage(settings)
-    document_index = create_document_index(settings)
+    document_index = create_generation_document_index(settings)
     generator = create_document_generator(settings)
 
     document_policy = create_document_policy()
