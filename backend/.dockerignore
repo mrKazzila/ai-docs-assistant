@@ -1,12 +1,17 @@
 .venv
+.git
 __pycache__
 *.pyc
 .pytest_cache
 .ruff_cache
 .mypy_cache
+.uv-cache
 
 logs
+lora-adapter
 qdrant_storage
+redis_data
+env
 
 .env
 .DS_Store
