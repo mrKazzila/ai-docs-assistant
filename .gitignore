@@ -219,3 +219,4 @@ __marimo__/
 /backend/qdrant_storage/
 /backend/logs/
 /backend/lora-adapter/lora_adapter.gguf
+/backend/redis_data/
