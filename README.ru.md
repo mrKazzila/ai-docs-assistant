@@ -2,13 +2,14 @@
 
 [Read this README in English](README.md)
 
-Локальный FastAPI-сервис для генерации, хранения и семантического поиска API-документации. Текущая реализация находится в `backend/` и организована как layered application с отдельными entrypoint'ами для API и индексатора.
+Локальный FastAPI-сервис для генерации, хранения и семантического поиска API-документации. Текущая реализация находится в `backend/` и использует layered architecture с отдельными entrypoint'ами для API, индексатора и фонового generation worker.
 
 ## Что умеет сервис
 
-- Генерировать Markdown-документацию API по текстовому запросу через `POST /generate`
-- Искать в векторном индексе уже существующий релевантный документ до генерации нового
-- Валидировать сгенерированный контент перед сохранением в локальную базу знаний
+- Принимать запросы на генерацию документации через `POST /generate`
+- Сохранять generation jobs в Redis и сразу возвращать job id
+- Обрабатывать queued jobs в отдельном фоновом worker'е
+- Отдавать статус и результат generation job через `GET /generate/{job_id}`
 - Сохранять Markdown-документы в `backend/docs/`
 - Индексировать документы в Qdrant для semantic search
 - Находить наиболее релевантную документацию через `POST /search`
@@ -20,14 +21,16 @@
 
 - `presentation` публикует FastAPI REST API и схемы запросов/ответов
 - `application` содержит DTO, порты и use case'ы
-- `domain` содержит политики документов и правила именования файлов
-- `infrastructure` реализует storage, vector search, health probing и генерацию на базе CrewAI
-- `entrypoints` содержит runtime entrypoint'ы для API и worker-индексатора
+- `domain` содержит политики документов, job entities и enum'ы
+- `infrastructure` реализует storage, vector search, Redis-backed queue/repository, health probing и генерацию на базе CrewAI
+- `entrypoints` содержит runtime entrypoint'ы для API и worker'ов
 - `config` содержит settings, wiring зависимостей и настройку логирования
 
 Сервис использует следующие runtime-компоненты:
 
 - `FastAPI` для HTTP API
+- `Redis` для очереди generation jobs и хранения их состояния
+- `generation-worker` для фоновой обработки queued generation jobs
 - `CrewAI` для запуска generator и validator agents внутри `CrewAIDocumentGenerator`
 - `Ollama` для LLM и embedding-модели
 - `Qdrant` для векторного хранилища и semantic search
@@ -37,13 +40,16 @@
 
 - entrypoint API: `python -m ai_docs_assistant.entrypoints.application`
 - worker индексирования базы знаний: `python -m ai_docs_assistant.entrypoints.workers.indexer`
+- фоновый generation worker: `python -m ai_docs_assistant.entrypoints.workers.generation`
 - seed-документы индексируются отдельным worker'ом, а не неявно при старте API
+- flow генерации асинхронный: API создаёт job, Redis хранит очередь и состояние job, worker выполняет обработку, а API отдаёт результат по job id
 
 ## Стек
 
 - Python 3.13
 - FastAPI
 - Uvicorn
+- Redis
 - CrewAI
 - Ollama
 - Qdrant
@@ -69,6 +75,7 @@
     ├── lora-adapter/
     ├── pyproject.toml
     ├── qdrant_storage/
+    ├── redis_data/
     ├── src/
     └── uv.lock
 ```
@@ -77,9 +84,9 @@
 
 - `backend/src/ai_docs_assistant/presentation/` - REST API слой
 - `backend/src/ai_docs_assistant/application/` - use case'ы, DTO и интерфейсы
-- `backend/src/ai_docs_assistant/domain/` - доменные политики и value objects
-- `backend/src/ai_docs_assistant/infrastructure/` - Qdrant, файловое хранилище, CrewAI generator и health checks
-- `backend/src/ai_docs_assistant/entrypoints/` - entrypoint'ы API и индексатора
+- `backend/src/ai_docs_assistant/domain/` - доменные политики, сущности и enum'ы
+- `backend/src/ai_docs_assistant/infrastructure/` - Qdrant, файловое хранилище, Redis queue/repository, CrewAI generator и health checks
+- `backend/src/ai_docs_assistant/entrypoints/` - entrypoint'ы API, индексатора и generation worker
 - `backend/src/ai_docs_assistant/config/` - settings, фабрики зависимостей и логирование
 - `backend/docs/` - seed- и сгенерированные Markdown-документы
 - `backend/env/.env` - конфигурация окружения, которую читает приложение и Docker-сервисы
@@ -87,6 +94,7 @@
 - `backend/logs/` - файлы логов приложения
 - `backend/lora-adapter/` - опциональные артефакты LoRA-адаптера для Ollama и инструкция по настройке
 - `backend/qdrant_storage/` - локальный каталог данных Qdrant, примонтированный через Docker Compose
+- `backend/redis_data/` - локальный каталог Redis persistence, примонтированный через Docker Compose
 
 ## Быстрый старт
 
@@ -137,15 +145,20 @@ just run-all
 Этот сценарий запускает:
 
 - `qdrant`
-- одноразовый `indexer`-job, который загружает `backend/docs/` в Qdrant
+- `redis`
+- отдельный одноразовый `indexer`-job, который загружает `backend/docs/` в Qdrant
+- долгоживущий контейнер `generation-worker` для фоновой обработки jobs
 - контейнер `api` на `http://127.0.0.1:8000`
 
-`indexer` работает по принципу миграции: стартует, завершает индексацию и автоматически удаляется, поэтому после выполнения `just ps` показывает только долгоживущие сервисы `qdrant` и `api`.
+Если `generation-worker` не запущен, generation jobs останутся в `pending`, и документ не будет создан.
+
+`indexer` работает по принципу миграции: стартует, завершает индексацию и автоматически удаляется, поэтому после выполнения `just ps` показывает только долгоживущие сервисы `qdrant`, `redis`, `generation-worker` и `api`.
 Если раньше `indexer` запускался через `docker compose up`, один раз выполните `just down-all`, чтобы убрать старый service-контейнер и перейти на одноразовый сценарий.
 
 Полезные команды стека:
 
 - `just run-qdrant`
+- `just run-redis`
 - `just run-indexer`
 - `just run-api`
 - `just run-all`
@@ -172,27 +185,41 @@ just run-all
 docker compose up -d qdrant
 ```
 
-2. Запустите индексатор:
+2. Запустите Redis:
+
+```bash
+docker compose up -d redis
+```
+
+3. Запустите индексатор:
 
 ```bash
 docker compose build indexer
 docker compose run --rm --no-deps indexer
 ```
 
-3. Запустите API:
+4. Запустите generation worker:
+
+```bash
+docker compose build generation-worker
+docker compose up -d generation-worker
+```
+
+5. Запустите API:
 
 ```bash
 docker compose build api
 docker compose up -d api
 ```
 
-API и indexer работают как отдельные контейнеры. Оба ожидают, что Ollama доступен на хост-машине. В Docker-сценарии дефолтный `backend/env/.env` использует:
+Для асинхронной генерации нужны одновременно API, Redis и generation worker. В Docker-сценарии дефолтный `backend/env/.env` использует:
 
 ```env
 OLLAMA_HOST=host.docker.internal
+REDIS_HOST=redis
 ```
 
-Этот ручной сценарий соответствует текущим `just`-рецептам: сначала собираются образы, затем в фоне поднимается `qdrant`, после этого одноразово выполняется `indexer`, и отдельно запускается `api`.
+Этот ручной сценарий соответствует текущим `just`-рецептам: `qdrant` и `redis` работают в фоне, `indexer` выполняется как одноразовый контейнер, а `generation-worker` и `api` запускаются отдельно после него.
 
 ## Конфигурация
 
@@ -209,6 +236,11 @@ OLLAMA_HOST=host.docker.internal
 | `OLLAMA_HOST` | хост Ollama |
 | `OLLAMA_PORT` | порт Ollama |
 | `OLLAMA_MODEL` | имя модели для генерации документации |
+| `REDIS_HOST` | хост Redis |
+| `REDIS_PORT` | порт Redis |
+| `REDIS_DB` | индекс Redis database для generation jobs |
+| `REDIS_GENERATION_QUEUE_NAME` | имя Redis list, используемой как очередь генерации |
+| `REDIS_GENERATION_JOB_TTL_SECONDS` | TTL для хранения состояния generation jobs в Redis |
 
 Производные URL собираются в settings:
 
@@ -219,6 +251,7 @@ OLLAMA_HOST=host.docker.internal
 
 - API: `python -m ai_docs_assistant.entrypoints.application`
 - Indexer: `python -m ai_docs_assistant.entrypoints.workers.indexer`
+- Generation worker: `python -m ai_docs_assistant.entrypoints.workers.generation`
 
 Индексатор также поддерживает:
 
@@ -232,7 +265,7 @@ python -m ai_docs_assistant.entrypoints.workers.indexer --no-recreate
 
 ### `POST /generate`
 
-Генерирует новый Markdown-документ, если достаточно похожий документ ещё не найден.
+Создаёт новую асинхронную generation job.
 
 Пример запроса:
 
@@ -246,21 +279,51 @@ python -m ai_docs_assistant.entrypoints.workers.indexer --no-recreate
 
 ```json
 {
-  "success": true,
-  "message": "Документ успешно создан и сохранён.",
-  "content": "### GET /api/v1/tasks\n**Описание**: ...",
-  "file_path": "docs/get_tasks_1.md"
+  "job_id": "123e4567-e89b-12d3-a456-426614174000",
+  "status": "pending"
 }
 ```
 
 Поведение:
 
-- сначала выполняет semantic search через `DocumentIndex`
-- использует `CrewAIDocumentGenerator` для генерации контента
-- валидирует сгенерированный контент доменным правилом, эквивалентным `content.startswith("###")`
-- сохраняет документ с уникальным именем в `backend/docs/`
-- индексирует сохранённый документ в Qdrant
-- если похожий документ уже найден, возвращает существующий контент и не создаёт новый файл
+- создаёт generation job со статусом `pending`
+- сохраняет состояние job в Redis
+- ставит `job_id` в Redis generation queue
+- сразу возвращает `202 Accepted`
+- не выполняет генерацию документа inline внутри API-запроса
+
+### `GET /generate/{job_id}`
+
+Возвращает текущее состояние job и, когда он готов, результат генерации.
+
+Пример ответа для завершённой job:
+
+```json
+{
+  "job_id": "123e4567-e89b-12d3-a456-426614174000",
+  "query": "опиши endpoint для получения задач пользователя",
+  "status": "completed",
+  "content": "### GET /api/v1/tasks\n**Описание**: ...",
+  "file_path": "docs/get_tasks_1.md",
+  "error_message": null
+}
+```
+
+Возможные статусы:
+
+- `pending`
+- `processing`
+- `completed`
+- `failed`
+- `skipped`
+
+Значение статусов:
+
+- `completed` - документ был сгенерирован, сохранён и проиндексирован
+- `failed` - генерация или валидация завершилась ошибкой
+- `skipped` - похожий документ уже существовал, поэтому новый файл не создавался
+
+Если job не существует, endpoint возвращает `404 Not Found`.
 
 ### `POST /search`
 
@@ -325,6 +388,7 @@ python -m ai_docs_assistant.entrypoints.workers.indexer --no-recreate
 - `backend/logs/errors.log` - логи ошибок приложения
 - `backend/docs/` - seed- и сгенерированные Markdown-документы
 - `backend/qdrant_storage/` - локальное хранилище данных Qdrant
+- `backend/redis_data/` - локальные persistence-данные Redis
 
 ## Seed-документы
 
