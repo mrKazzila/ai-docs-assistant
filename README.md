@@ -12,7 +12,7 @@ Local FastAPI service for generating, storing, and semantically searching API do
 - Exposes generation job status and result via `GET /generate/{job_id}`
 - Stores Markdown documents in `backend/docs/`
 - Indexes documents in Qdrant for semantic search
-- Finds the most relevant documentation via `POST /search`
+- Finds the most relevant documentation via `POST /search` using multi-candidate selection and relevance filtering
 - Checks service dependencies and RAG readiness via `GET /health`
 
 ## Architecture
@@ -20,11 +20,11 @@ Local FastAPI service for generating, storing, and semantically searching API do
 The backend is split into explicit layers:
 
 - `presentation` exposes the FastAPI REST API and request/response schemas
-- `application` contains DTOs, ports, and use cases
+- `application` contains DTOs, ports, use cases, and application services
 - `domain` contains document policies, job entities, and enums
 - `infrastructure` implements storage, vector search, Redis-backed queues and repositories, health probing, and CrewAI-based generation
 - `entrypoints` contains runtime entrypoints for the API and workers
-- `config` contains settings, dependency wiring, and logging setup
+- `config` contains settings, modular dependency factories, and logging setup
 
 The service uses these runtime components:
 
@@ -35,6 +35,8 @@ The service uses these runtime components:
 - `Ollama` for the LLM and embedding model
 - `Qdrant` for vector storage and semantic search
 - local filesystem storage in `backend/docs/` for the Markdown knowledge base
+- `SearchResultSelector` to choose the best candidate from multiple search hits
+- `SearchRelevancePolicy` to reject semantically inconsistent search results
 
 Important runtime behavior:
 
@@ -43,6 +45,7 @@ Important runtime behavior:
 - The background generation worker is `python -m ai_docs_assistant.entrypoints.workers.generation`
 - Seed documents are indexed by the separate indexer worker, not implicitly during API startup
 - Generation flow is asynchronous: API creates a job, Redis stores the queue entry and job state, the worker processes the job, and the API exposes the result by job id
+- Search flow is multi-step: fetch several Qdrant candidates, choose the best match, then validate relevance before returning content
 
 ## Stack
 
@@ -83,11 +86,11 @@ Important runtime behavior:
 Key directories:
 
 - `backend/src/ai_docs_assistant/presentation/` - REST API layer
-- `backend/src/ai_docs_assistant/application/` - use cases, DTOs, and interfaces
+- `backend/src/ai_docs_assistant/application/` - use cases, DTOs, interfaces, and search-related application services
 - `backend/src/ai_docs_assistant/domain/` - domain policies, entities, and enums
 - `backend/src/ai_docs_assistant/infrastructure/` - Qdrant, filesystem storage, Redis queue/repository, CrewAI generator, and health checks
 - `backend/src/ai_docs_assistant/entrypoints/` - API, indexer, and generation-worker entrypoints
-- `backend/src/ai_docs_assistant/config/` - settings, dependency factories, and logging
+- `backend/src/ai_docs_assistant/config/` - settings, modular dependency factories (`config.dependencies.api/common/generation/indexer/facade`), and logging
 - `backend/docs/` - seed and generated Markdown documents
 - `backend/env/.env` - environment configuration loaded by the application and Docker services
 - `backend/just/` - grouped `just` command definitions
@@ -327,7 +330,7 @@ Returns `404 Not Found` when the job does not exist.
 
 ### `POST /search`
 
-Searches for the single most relevant indexed document.
+Searches for the most relevant indexed document through a multi-candidate selection flow.
 
 Request example:
 
@@ -356,6 +359,23 @@ Response when nothing is found:
   "message": "Документация не найдена. Используйте /generate для создания новой."
 }
 ```
+
+Behavior:
+
+- requests up to 5 candidates from the vector index through `search_many(...)` with `score_threshold=0.0`
+- uses `SearchResultSelector` to choose the best candidate for the query
+- if the query clearly refers to `profile`, `task`, or `user`, the selector prefers a result whose `content` or `source` contains the matching path/token
+- if there is no explicit preferred match, the selector falls back to the first candidate returned by the index
+- uses `SearchRelevancePolicy` to validate the selected result before returning it
+- rejects results with score lower than `0.62`
+- additionally checks that the detected domain (`profile`, `users`, `tasks`) and action (`get`, `create`, `update`, `delete`) from the query match the selected document
+- returns `found: false` when there are no candidates or when the chosen candidate fails relevance validation
+
+Operational notes:
+
+- `search_many()` has replaced the old single-result strategy for user-facing search
+- the simpler `search()` method is still used in other parts of the system, including generation deduplication and health checks
+- for `/search`, “not found” can now mean either an empty candidate set or a candidate rejected by selector/policy validation
 
 ### `GET /health`
 
