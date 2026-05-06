@@ -127,7 +127,7 @@ class QdrantDocumentIndex(DocumentIndex):
                 exc_info=True,
             )
             return None
-    
+
     async def search_many(
         self,
         query: str,

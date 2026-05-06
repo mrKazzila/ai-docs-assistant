@@ -27,7 +27,9 @@ from ai_docs_assistant.config.dependencies.api import (
     create_get_generation_job_use_case,
     create_health_checker,
     create_healthcheck_use_case,
-    create_search_docs_use_case, create_search_result_selector, create_search_relevance_policy,
+    create_search_docs_use_case,
+    create_search_relevance_policy,
+    create_search_result_selector,
 )
 from ai_docs_assistant.config.dependencies.common import (
     create_document_filename_policy,

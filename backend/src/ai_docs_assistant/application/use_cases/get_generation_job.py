@@ -2,7 +2,7 @@ from ai_docs_assistant.application.dtos.generation_jobs import (
     GetGenerationJobDTO,
     GetGenerationJobResultDTO,
 )
-from ai_docs_assistant.application.interfaces.generation_job_repository import (
+from ai_docs_assistant.application.interfaces.generation_job_repository import (  # noqa: E501
     GenerationJobRepository,
 )
 

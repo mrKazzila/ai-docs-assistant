@@ -27,7 +27,7 @@ class DocumentIndex(Protocol):
         score_threshold: float = 0.62,
     ) -> IndexedDocument | None:
         """Search relevant indexed document."""
-    
+
     async def search_many(
         self,
         query: str,
@@ -35,4 +35,4 @@ class DocumentIndex(Protocol):
         score_threshold: float = 0.0,
     ) -> list[IndexedDocument]:
         """Search many relevant indexed document."""
-        
+

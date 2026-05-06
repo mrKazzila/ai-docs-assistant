@@ -8,7 +8,7 @@ from ai_docs_assistant.application.dtos.generation_jobs import (
 from ai_docs_assistant.application.interfaces.generation_job_queue import (
     GenerationJobQueue,
 )
-from ai_docs_assistant.application.interfaces.generation_job_repository import (
+from ai_docs_assistant.application.interfaces.generation_job_repository import (  # noqa: E501
     GenerationJobRepository,
 )
 from ai_docs_assistant.domain.entities.generation_job import GenerationJob
