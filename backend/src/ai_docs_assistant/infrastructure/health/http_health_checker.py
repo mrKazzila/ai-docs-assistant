@@ -51,16 +51,25 @@ class HttpHealthChecker(HealthChecker):
         return await self._storage.has_markdown_documents()
 
     async def check_rag_canary(self) -> bool:
+        expected = "GET /api/v1/profile"
+
         result = await self._document_index.search(
-            query="Эндпоинт для получения профиля",
-            score_threshold=0.6,
+            query=expected,
+            score_threshold=0.75,
         )
 
-        logger.warning(
-            "rag_canary_unexpected_result",
-            expected="GET /api/v1/profile",
-            source=result.source,
-            score=result.score,
-        )
+        if result is None:
+            logger.warning("rag_canary_not_found", expected=expected)
+            return False
 
-        return result is not None and "GET /api/v1/profile" in result.content
+        if expected not in result.content:
+            logger.warning(
+                "rag_canary_unexpected_result",
+                expected=expected,
+                source=result.source,
+                score=result.score,
+                preview=f"{result.content[:120]}...",
+            )
+            return False
+
+        return True
