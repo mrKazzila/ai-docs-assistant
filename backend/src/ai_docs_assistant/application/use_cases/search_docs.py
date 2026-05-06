@@ -2,12 +2,14 @@ from ai_docs_assistant.application.dtos.documents import (
     SearchDocumentDTO,
     SearchedDocumentDTO,
 )
-from ai_docs_assistant.application.interfaces.document_index import DocumentIndex
-from ai_docs_assistant.application.services.search_result_selector import (
-    SearchResultSelector,
+from ai_docs_assistant.application.interfaces.document_index import (
+    DocumentIndex,
 )
 from ai_docs_assistant.application.services.search_relevance_policy import (
     SearchRelevancePolicy,
+)
+from ai_docs_assistant.application.services.search_result_selector import (
+    SearchResultSelector,
 )
 
 
@@ -41,7 +43,10 @@ class SearchDocsUseCase:
             return SearchedDocumentDTO(
                 found=False,
                 content=None,
-                message="Документация не найдена. Используйте /generate для создания новой.",
+                message=(
+                    "Документация не найдена. "
+                    "Используйте /generate для создания новой."
+                ),
             )
 
         return SearchedDocumentDTO(

@@ -4,16 +4,16 @@ from uuid import UUID
 
 import structlog
 
-from ai_docs_assistant.domain.entities.generation_job import GenerationJob
 from ai_docs_assistant.application.dtos.documents import (
     GenerateDocumentDTO,
 )
-from ai_docs_assistant.application.interfaces.generation_job_repository import (
+from ai_docs_assistant.application.interfaces.generation_job_repository import (  # noqa: E501
     GenerationJobRepository,
 )
 from ai_docs_assistant.application.use_cases.generate_docs import (
     GenerateDocsUseCase,
 )
+from ai_docs_assistant.domain.entities.generation_job import GenerationJob
 from ai_docs_assistant.domain.enums.generation_job_status import (
     GenerationJobStatus,
 )

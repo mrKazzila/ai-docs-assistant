@@ -1,4 +1,6 @@
-from ai_docs_assistant.application.interfaces.document_index import IndexedDocument
+from ai_docs_assistant.application.interfaces.document_index import (
+    IndexedDocument,
+)
 
 
 class SearchRelevancePolicy:
@@ -40,10 +42,16 @@ class SearchRelevancePolicy:
             self.ACTION_TOKENS,
         )
 
-        if expected_domain is not None and expected_domain not in normalized_document:
+        if (
+            expected_domain is not None
+            and expected_domain not in normalized_document
+        ):
             return False
 
-        if expected_action is not None and expected_action not in normalized_document:
+        if (
+            expected_action is not None
+            and expected_action not in normalized_document
+        ):
             return False
 
         return True

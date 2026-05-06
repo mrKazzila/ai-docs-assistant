@@ -1,4 +1,6 @@
-from ai_docs_assistant.application.interfaces.document_index import IndexedDocument
+from ai_docs_assistant.application.interfaces.document_index import (
+    IndexedDocument,
+)
 
 
 class SearchResultSelector:

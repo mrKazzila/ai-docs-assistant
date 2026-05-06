@@ -13,7 +13,12 @@ from ai_docs_assistant.application.interfaces.generation_job_queue import (
 from ai_docs_assistant.application.interfaces.health_checker import (
     HealthChecker,
 )
-from ai_docs_assistant.application.services.search_relevance_policy import SearchRelevancePolicy
+from ai_docs_assistant.application.services.search_relevance_policy import (
+    SearchRelevancePolicy,
+)
+from ai_docs_assistant.application.services.search_result_selector import (
+    SearchResultSelector,
+)
 from ai_docs_assistant.application.use_cases.create_generation_job import (
     CreateGenerationJobUseCase,
 )
@@ -30,9 +35,6 @@ from ai_docs_assistant.config.settings.base import Settings
 from ai_docs_assistant.infrastructure.health import (
     HttpHealthChecker,
     HttpProbe,
-)
-from ai_docs_assistant.application.services.search_result_selector import (
-    SearchResultSelector,
 )
 
 
