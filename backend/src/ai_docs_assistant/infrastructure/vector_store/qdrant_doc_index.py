@@ -127,6 +127,54 @@ class QdrantDocumentIndex(DocumentIndex):
                 exc_info=True,
             )
             return None
+    
+    async def search_many(
+        self,
+        query: str,
+        limit: int = 5,
+        score_threshold: float = 0.0,
+    ) -> list[IndexedDocument]:
+        try:
+            self._ensure_collection_exists()
+
+            results = self._vector_store.similarity_search_with_score(
+                query,
+                k=limit,
+                score_threshold=score_threshold,
+            )
+
+            indexed = [
+                IndexedDocument(
+                    content=document.page_content,
+                    source=document.metadata.get("source"),
+                    score=score,
+                )
+                for document, score in results
+            ]
+
+            logger.info(
+                "document_index_search_many_finished",
+                query=query,
+                results=[
+                    {
+                        "source": item.source,
+                        "score": item.score,
+                        "preview": f"{item.content[:80]}...",
+                    }
+                    for item in indexed
+                ],
+            )
+
+            return indexed
+
+        except Exception as exc:
+            logger.error(
+                "document_index_search_many_failed",
+                query=query,
+                error=str(exc),
+                exc_info=True,
+            )
+        return []
 
     def _ensure_collection_exists(self) -> None:
         if self._client.collection_exists(self._collection_name):
