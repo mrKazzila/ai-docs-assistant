@@ -12,7 +12,7 @@
 - Отдавать статус и результат generation job через `GET /generate/{job_id}`
 - Сохранять Markdown-документы в `backend/docs/`
 - Индексировать документы в Qdrant для semantic search
-- Находить наиболее релевантную документацию через `POST /search`
+- Находить наиболее релевантную документацию через `POST /search` с multi-candidate выбором и relevance filtering
 - Проверять зависимости и готовность RAG через `GET /health`
 
 ## Архитектура
@@ -20,11 +20,11 @@
 Бэкенд разделён на явные слои:
 
 - `presentation` публикует FastAPI REST API и схемы запросов/ответов
-- `application` содержит DTO, порты и use case'ы
+- `application` содержит DTO, порты, use case'ы и application services
 - `domain` содержит политики документов, job entities и enum'ы
 - `infrastructure` реализует storage, vector search, Redis-backed queue/repository, health probing и генерацию на базе CrewAI
 - `entrypoints` содержит runtime entrypoint'ы для API и worker'ов
-- `config` содержит settings, wiring зависимостей и настройку логирования
+- `config` содержит settings, модульные фабрики зависимостей и настройку логирования
 
 Сервис использует следующие runtime-компоненты:
 
@@ -35,6 +35,8 @@
 - `Ollama` для LLM и embedding-модели
 - `Qdrant` для векторного хранилища и semantic search
 - локальное файловое хранилище в `backend/docs/` для Markdown-базы знаний
+- `SearchResultSelector` для выбора лучшего кандидата из нескольких search results
+- `SearchRelevancePolicy` для отбраковки семантически нерелевантных результатов
 
 Важно для runtime-поведения:
 
@@ -43,6 +45,7 @@
 - фоновый generation worker: `python -m ai_docs_assistant.entrypoints.workers.generation`
 - seed-документы индексируются отдельным worker'ом, а не неявно при старте API
 - flow генерации асинхронный: API создаёт job, Redis хранит очередь и состояние job, worker выполняет обработку, а API отдаёт результат по job id
+- flow поиска многошаговый: сначала запрашиваются несколько кандидатов из Qdrant, затем выбирается лучший match, после чего результат проходит проверку релевантности
 
 ## Стек
 
@@ -83,11 +86,11 @@
 Ключевые директории:
 
 - `backend/src/ai_docs_assistant/presentation/` - REST API слой
-- `backend/src/ai_docs_assistant/application/` - use case'ы, DTO и интерфейсы
+- `backend/src/ai_docs_assistant/application/` - use case'ы, DTO, интерфейсы и application services для поиска
 - `backend/src/ai_docs_assistant/domain/` - доменные политики, сущности и enum'ы
 - `backend/src/ai_docs_assistant/infrastructure/` - Qdrant, файловое хранилище, Redis queue/repository, CrewAI generator и health checks
 - `backend/src/ai_docs_assistant/entrypoints/` - entrypoint'ы API, индексатора и generation worker
-- `backend/src/ai_docs_assistant/config/` - settings, фабрики зависимостей и логирование
+- `backend/src/ai_docs_assistant/config/` - settings, модульные фабрики зависимостей (`config.dependencies.api/common/generation/indexer/facade`) и логирование
 - `backend/docs/` - seed- и сгенерированные Markdown-документы
 - `backend/env/.env` - конфигурация окружения, которую читает приложение и Docker-сервисы
 - `backend/just/` - группированные определения команд `just`
@@ -327,7 +330,7 @@ python -m ai_docs_assistant.entrypoints.workers.indexer --no-recreate
 
 ### `POST /search`
 
-Ищет один наиболее релевантный документ в индексе.
+Ищет наиболее релевантный документ через многошаговый multi-candidate flow.
 
 Пример запроса:
 
@@ -356,6 +359,23 @@ python -m ai_docs_assistant.entrypoints.workers.indexer --no-recreate
   "message": "Документация не найдена. Используйте /generate для создания новой."
 }
 ```
+
+Поведение:
+
+- запрашивает у векторного индекса до 5 кандидатов через `search_many(...)` с `score_threshold=0.0`
+- использует `SearchResultSelector`, чтобы выбрать лучший кандидат для текущего запроса
+- если в запросе явно распознаётся `profile`, `task` или `user`, selector предпочитает документ, в котором соответствующий path/token есть в `content` или `source`
+- если явного предпочтительного совпадения нет, selector берёт первый кандидат из выдачи индекса
+- использует `SearchRelevancePolicy`, чтобы провалидировать выбранный результат перед возвратом
+- отбрасывает результаты со score ниже `0.62`
+- дополнительно проверяет, что домен (`profile`, `users`, `tasks`) и действие (`get`, `create`, `update`, `delete`), распознанные в запросе, согласуются с выбранным документом
+- возвращает `found: false`, если кандидатов нет или если выбранный кандидат не прошёл relevance validation
+
+Operational notes:
+
+- `search_many()` логически заменил старую стратегию поиска с одним прямым результатом для пользовательского `/search`
+- более простой `search()` по-прежнему используется в других частях системы, включая проверку дубликатов при генерации и health check
+- для `/search` отсутствие результата теперь может означать либо пустую выдачу, либо кандидата, отфильтрованного selector/policy-проверкой
 
 ### `GET /health`
 
