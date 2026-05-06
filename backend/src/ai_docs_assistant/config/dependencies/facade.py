@@ -27,7 +27,7 @@ from ai_docs_assistant.config.dependencies.api import (
     create_get_generation_job_use_case,
     create_health_checker,
     create_healthcheck_use_case,
-    create_search_docs_use_case,
+    create_search_docs_use_case, create_search_result_selector, create_search_relevance_policy,
 )
 from ai_docs_assistant.config.dependencies.common import (
     create_document_filename_policy,
@@ -82,9 +82,12 @@ def create_api_dependencies(settings: Settings) -> ApiDependencies:
     )
 
     storage = create_document_storage(settings)
-    document_index = create_document_index(settings)
-    http_probe = create_http_probe()
 
+    document_index = create_document_index(settings)
+    result_selector = create_search_result_selector()
+    relevance_policy = create_search_relevance_policy()
+
+    http_probe = create_http_probe()
     health_checker = create_health_checker(
         settings=settings,
         storage=storage,
@@ -102,6 +105,8 @@ def create_api_dependencies(settings: Settings) -> ApiDependencies:
         ),
         search_docs_use_case=create_search_docs_use_case(
             document_index=document_index,
+            result_selector=result_selector,
+            relevance_policy=relevance_policy,
         ),
         healthcheck_use_case=create_healthcheck_use_case(
             health_checker=health_checker,
